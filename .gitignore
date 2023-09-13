@@ -27,5 +27,6 @@ vendor/
 /answer-data/
 /answer
 /new_answer
+/data
 
 dist/

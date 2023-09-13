@@ -1,6 +1,6 @@
 module github.com/answerdev/answer
 
-go 1.18
+go 1.21.0
 
 require (
 	github.com/Chain-Zhang/pinyin v0.1.3
@@ -155,3 +155,7 @@ require (
 replace lukechampine.com/uint128 v1.1.1 => github.com/aichy126/uint128 v1.1.1
 
 replace modernc.org/cc/v3 v3.40.0 => gitlab.com/cznic/cc/v3 v3.40.0
+
+replace corpwechat => ./plugin/plugins/connector/corpwechat
+
+require corpwechat v0.0.1

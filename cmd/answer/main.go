@@ -1,6 +1,7 @@
 package main
 
 import (
+	_ "corpwechat"
 	answercmd "github.com/answerdev/answer/cmd"
 )
 

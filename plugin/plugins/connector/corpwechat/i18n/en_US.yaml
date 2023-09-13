@@ -1,0 +1,36 @@
+plugin:
+  corpwechat_connector:
+    backend:
+      name:
+        other: CorpWechat
+      info:
+        name:
+          other: CorpWechat Connector
+        description:
+          other: Connection corp wechat swipe login.
+      config:
+        app_id:
+          title:
+            other: CorpID
+          description:
+            other: Corp ID of your application
+        agent_id:
+          title:
+            other: AgentID
+          description:
+            other: Agent ID of your application
+        corp_secret:
+          title:
+            other: CorpSecret
+          description:
+            other: Corp secret of your application
+        redirect_uri:
+          title:
+            other: RedirectURI
+          description:
+            other: The redirect URI of the application
+        proxy_ip:
+          title:
+            other: ProxyIP
+          description:
+            other: Proxy ip address
