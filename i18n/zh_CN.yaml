@@ -755,7 +755,7 @@ ui:
     no_desc: 此标签无描述。
     more: 更多
   ask:
-    title: 提交新的问题
+    title: 发布新的帖子
     edit_title: 编辑问题
     default_reason: 编辑问题
     similar_questions: 相似的问题
@@ -785,7 +785,7 @@ ui:
           label: 编辑摘要
           placeholder: >-
             简单描述更改原因 (错别字、文字表达、格式等等)
-    btn_post_question: 提交问题
+    btn_post_question: 发布
     btn_save_edits: 保存更改
     answer_question: 直接发表回答
     post_question&answer: 提交问题和回答
@@ -1071,7 +1071,7 @@ ui:
     signup: 注册
     logout: 退出登录
     verify: 验证
-    add_question: 我要提问
+    add_question: 我要发帖
     approve: 批准
     reject: 拒绝
     skip: 略过
@@ -1135,7 +1135,7 @@ ui:
     save: 保存
     follow_tag_tip: 按照标签整理您的问题列表。
     hot_questions: 热点问题
-    all_questions: 全部问题
+    all_questions: 全部帖子
     x_questions: "{{ count }} 个问题"
     x_answers: "{{ count }} 个回答"
     questions: 个问题
