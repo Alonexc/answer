@@ -169,6 +169,16 @@ func (ur *userRepo) GetByUserID(ctx context.Context, userID string) (userInfo *e
 	return
 }
 
+func (ur *userRepo) GetByUserIDS(ctx context.Context, userIDS []string) ([]*entity.User, error) {
+	list := make([]*entity.User, 0)
+	err := ur.data.DB.Context(ctx).In("id", userIDS).Select("e_mail").Find(&list)
+	if err != nil {
+		err = errors.InternalServer(reason.DatabaseError).WithError(err).WithStack()
+		return nil, err
+	}
+	return list, nil
+}
+
 func (ur *userRepo) BatchGetByID(ctx context.Context, ids []string) ([]*entity.User, error) {
 	list := make([]*entity.User, 0)
 	err := ur.data.DB.Context(ctx).In("id", ids).Find(&list)

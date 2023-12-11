@@ -2,16 +2,24 @@ package corpwechat
 
 import (
 	"bytes"
+	"context"
 	"corpwechat/i18n"
 	"encoding/json"
 	"fmt"
 	"github.com/answerdev/answer/plugin"
 	"github.com/segmentfault/pacman/log"
-	"net/http"
-	"net/url"
+	"strconv"
 	"strings"
 	"time"
 )
+
+const (
+	HEADER_WEBANK_NOTICE = "We开发者社区消息:\n"
+	WEBANK_LINK_NOTICE   = "\n请访问<a href=\"http://developers.weoa.com/users/notifications/inbox\">开发者社区</a>进行查看"
+)
+
+// tokenCache 定义一个string存储token信息
+var tokenCache string
 
 type Connector struct {
 	Config *ConnectorConfig
@@ -26,10 +34,16 @@ type ConnectorConfig struct {
 }
 
 func init() {
-	plugin.Register(&Connector{
+	connector = &Connector{
 		Config: &ConnectorConfig{},
-	})
+	}
+	plugin.Register(connector)
 }
+func GetConnector() *Connector {
+	return connector
+}
+
+var connector *Connector
 
 func (g *Connector) Info() plugin.Info {
 	return plugin.Info{
@@ -71,37 +85,25 @@ func (g *Connector) ConnectorSender(ctx *plugin.GinContext, receiverURL string) 
 // as well as the user's info
 func (g *Connector) ConnectorReceiver(ctx *plugin.GinContext, receiverURL string) (userInfo plugin.ExternalLoginUserInfo, err error) {
 	code := ctx.Query("code")
-	proxyURL, err := url.Parse(g.Config.ProxyIP)
-	if err != nil {
-		log.Error("proxyIP failed", err)
+	// http client
+	client := Client(g.Config.ProxyIP)
+	client.Timeout = 15 * time.Second
+	// 1.Get token
+	accessToken := tokenCache
+	log.Infof("ConnectorReceiver accessToken=%s", accessToken)
+
+	if accessToken == "" {
+		log.Info("accessToken is nil")
 		return
-	}
-	client := &http.Client{Transport: &http.Transport{
-		Proxy: http.ProxyURL(proxyURL),
-	},
 	}
 
-	client.Timeout = 15 * time.Second
-	// Exchange code for token
-	// 1.Get access_token of enterprise weibo via code
-	tokenResp, err := client.Get(fmt.Sprintf(
-		"https://qyapi.weixin.qq.com/cgi-bin/gettoken?corpid=%s&corpsecret=%s",
-		g.Config.AppID, g.Config.CorpSecret))
-	if err != nil {
-		log.Errorf("failed getting token: %s", err)
-		return
-	}
-	err = json.NewDecoder(tokenResp.Body).Decode(&tokenData)
-	if err != nil {
-		log.Errorf("token data parsing failed: %s", tokenResp.Body)
-		return
-	}
-	log.Infof(fmt.Sprintf("access_token=%s", tokenData.AccessToken))
-	defer tokenResp.Body.Close()
 	// 2.Get userid by access_token and code
-	userIDResp, err := client.Get(fmt.Sprintf(
-		"https://qyapi.weixin.qq.com/cgi-bin/auth/getuserinfo?access_token=%s&code=%s",
-		tokenData.AccessToken, code))
+	authUrl := UrlConfig{
+		AccessToken: accessToken,
+		Code:        code,
+		URL:         USER_ID_URL,
+	}
+	userIDResp, err := client.Get(authUrl.BuildURL())
 	if err != nil {
 		log.Errorf("get userID failed: %s", err)
 		return
@@ -114,9 +116,12 @@ func (g *Connector) ConnectorReceiver(ctx *plugin.GinContext, receiverURL string
 	log.Infof(fmt.Sprintf("UserID = %s, OpenID = %s", userIDData.UserID, userIDData.OpenID))
 	userIDResp.Body.Close()
 	// 3.Get user info by access_token and userid
-	userInfoResp, err := client.Get(fmt.Sprintf(
-		"https://qyapi.weixin.qq.com/cgi-bin/user/get?access_token=%s&userid=%s",
-		tokenData.AccessToken, userIDData.UserID))
+	userInfoUrl := UrlConfig{
+		AccessToken: accessToken,
+		Userid:      userIDData.UserID,
+		URL:         USER_INFO_URL,
+	}
+	userInfoResp, err := client.Get(userInfoUrl.BuildURL())
 	if err != nil {
 		log.Errorf("get user info failed: %s", err)
 		return
@@ -126,8 +131,8 @@ func (g *Connector) ConnectorReceiver(ctx *plugin.GinContext, receiverURL string
 		log.Errorf("user infoData parsing failed: %s", err)
 		return
 	}
-	log.Infof(fmt.Sprintf("UserID=%s, Name=%s, Email=%s, Avatar=%s",
-		userInfoData.UserID, userInfoData.Name, userInfoData.Email, userInfoData.Avatar))
+	log.Infof("UserID = %s, Name = %s, Email = %s, Avatar = %s",
+		userInfoData.UserID, userInfoData.Name, userInfoData.Email, userInfoData.Avatar)
 	userInfoResp.Body.Close()
 
 	// data conversion
@@ -141,8 +146,8 @@ func (g *Connector) ConnectorReceiver(ctx *plugin.GinContext, receiverURL string
 		Avatar:      userInfoData.Avatar,
 	}
 
-	log.Infof(fmt.Sprintf("UserID=%s, Name=%s, Email=%s, Avatar=%s",
-		userInfo.ExternalID, userInfo.Username, userInfo.Email, userInfo.Avatar))
+	log.Infof("UserID = %s, Name = %s, Email = %s, Avatar = %s",
+		userInfo.ExternalID, userInfo.Username, userInfo.Email, userInfo.Avatar)
 
 	return userInfo, nil
 }
@@ -207,18 +212,20 @@ func (g *Connector) ConfigFields() []plugin.ConfigField {
 	}
 }
 
+var isStart = false
+
 func (g *Connector) ConfigReceiver(config []byte) error {
 	c := &ConnectorConfig{}
 	_ = json.Unmarshal(config, c)
 	g.Config = c
+	g.TokenFromCorpWechat()
+	if !isStart {
+		go func() {
+			isStart = true
+			g.update()
+		}()
+	}
 	return nil
-}
-
-var tokenData struct {
-	ErrCode     int    `json:"errcode"`
-	ErrMsg      string `json:"errmsg"`
-	AccessToken string `json:"access_token"`
-	ExpiresIn   int    `json:"expires_in"`
 }
 
 var userIDData struct {
@@ -241,21 +248,18 @@ var userInfoData struct {
 	Alias     string `json:"alias"`
 }
 
-type AuthCodeOption interface {
-	setValue(url.Values)
-}
-
 type Config struct {
+	// AppID
 	AppID string
-
+	// AgentID
 	AgentID string
-
+	// CropSecret
 	CropSecret string
-
+	// Endpoint url
 	Endpoint Endpoint
-
+	// RedirectURL
 	RedirectURL string
-
+	// ProxyIP
 	ProxyIP string
 }
 
@@ -266,29 +270,96 @@ type Endpoint struct {
 	UserInfoURL string
 }
 
-func (c *Config) AuthCodeURL(state string) string {
-	var buf bytes.Buffer
-	buf.WriteString(c.Endpoint.AuthURL)
-	v := url.Values{
-		"login_type": {"CorpApp"},
-		"appid":      {c.AppID},
-		"agentid":    {c.AgentID},
-	}
-	if c.RedirectURL != "" {
-		v.Set("redirect_uri", c.RedirectURL)
+// MailNotice
+func (g *Connector) MailNotice(ctx context.Context, touser string,
+	displayName string, questionTitle string, sign int) {
+	log.Infof("started send MailNotice to corpwechat")
+	// client
+	client := Client(g.Config.ProxyIP)
+
+	// 1.Get access_token from cache
+	accessToken := tokenCache
+
+	if accessToken == "" {
+		log.Errorf("accessToken is nil")
+		return
 	}
 
-	if state != "" {
-		// TODO(light): Docs say never to omit state; don't allow empty.
-		v.Set("state", state)
+	log.Infof("Mail Notice tokenCache = %s", tokenCache)
+
+	// 2.Send a message to the enterprise WeChat. [POST Method]
+	var Content = ""
+	// content
+	if sign == 0 {
+		Content = HEADER_WEBANK_NOTICE + "您关注的标签有新的提问: " + questionTitle + WEBANK_LINK_NOTICE
+	}
+	if sign == 1 {
+		Content = HEADER_WEBANK_NOTICE + displayName + "评论了问题: " + questionTitle + WEBANK_LINK_NOTICE
+	}
+	if sign == 2 {
+		Content = HEADER_WEBANK_NOTICE + displayName + "回复了问题: " + questionTitle + WEBANK_LINK_NOTICE
+	}
+	if sign == 3 {
+		Content = HEADER_WEBANK_NOTICE + displayName + "邀请你回答问题: " + questionTitle + WEBANK_LINK_NOTICE
 	}
 
-	if strings.Contains(c.Endpoint.AuthURL, "?") {
-		buf.WriteByte('&')
-	} else {
-		buf.WriteByte('?')
+	log.Infof(fmt.Sprintf("send mail notice Content = %s", Content))
+
+	// body
+	// 获取缓存中的agentID
+	log.Debugf("Config = %s", g.Config)
+	agentID, _ := strconv.Atoi(g.Config.AgentID)
+	log.Infof("after agentID = %s", agentID)
+	weChatNotice := WeChatNotice{
+		Touser:  touser,
+		Toparty: "",
+		Totag:   "",
+		Msgtype: "text",
+		AgentID: agentID,
+		Text: Text{
+			Content: Content,
+		},
+		Safe:                   0,
+		EnableIdTrans:          0,
+		EnableDuplicateCheck:   0,
+		DuplicateCheckInterval: 1800,
 	}
-	buf.WriteString(v.Encode())
-	log.Infof(fmt.Sprintf("oauthURL=%s", buf.String()))
-	return buf.String()
+	notice, err := json.Marshal(&weChatNotice)
+	if err != nil {
+		log.Error(err)
+	}
+	log.Infof("json notice = %s", notice)
+	reader := bytes.NewReader(notice)
+	// send
+	sendURL := UrlConfig{
+		AccessToken: accessToken,
+		URL:         SEND_WECHAT_URL,
+	}
+	url := sendURL.BuildURL()
+	log.Debugf("build url = %s", url)
+	resp, err := client.Post(url, "application/json", reader)
+	if err != nil {
+		log.Errorf("err = %s", err)
+	}
+	if resp != nil {
+		log.Infof("resp = %s", resp)
+		defer resp.Body.Close()
+	}
+}
+
+type WeChatNotice struct {
+	Touser                 string `json:"touser"`
+	Toparty                string `json:"toparty"`
+	Totag                  string `json:"totag"`
+	Msgtype                string `json:"msgtype"`
+	AgentID                int    `json:"agentid"`
+	Text                   Text   `json:"text"`
+	Safe                   int    `json:"safe"`
+	EnableIdTrans          int    `json:"enable_id_trans"`
+	EnableDuplicateCheck   int    `json:"enable_duplicate_check"`
+	DuplicateCheckInterval int    `json:"duplicate_check_interval"`
+}
+
+type Text struct {
+	Content string `json:"content"`
 }

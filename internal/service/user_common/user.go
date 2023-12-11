@@ -38,6 +38,7 @@ type UserRepo interface {
 	GetByEmail(ctx context.Context, email string) (userInfo *entity.User, exist bool, err error)
 	GetUserCount(ctx context.Context) (count int64, err error)
 	SearchUserListByName(ctx context.Context, name string, limit int) (userList []*entity.User, err error)
+	GetByUserIDS(ctx context.Context, userIDS []string) ([]*entity.User, error)
 }
 
 // UserCommon user service
