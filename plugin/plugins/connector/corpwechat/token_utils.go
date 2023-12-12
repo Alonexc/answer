@@ -2,7 +2,6 @@ package corpwechat
 
 import (
 	"encoding/json"
-	"fmt"
 	"github.com/segmentfault/pacman/log"
 	"net/http"
 	"net/url"
@@ -16,7 +15,7 @@ type Token struct {
 	ExpiresIn   int    `json:"expires_in"`
 }
 
-// client() get client
+// Client get client
 func Client(proxyIP string) *http.Client {
 	proxyURL, err := url.Parse(proxyIP)
 	if err != nil {
@@ -26,6 +25,7 @@ func Client(proxyIP string) *http.Client {
 	httpClient := &http.Client{Transport: &http.Transport{
 		Proxy: http.ProxyURL(proxyURL)},
 	}
+	// 设置5秒过时
 	httpClient.Timeout = 5 * time.Second
 	return httpClient
 }
@@ -61,7 +61,7 @@ func (g *Connector) TokenFromCorpWechat() {
 	// 存入tokenCache
 	tokenCache = tokenData.AccessToken
 	if tokenCache != "" {
-		log.Debugf(fmt.Sprintf("tokenCache save success!"))
+		log.Debugf("tokenCache save success!")
 	}
 	defer tokenResp.Body.Close()
 }

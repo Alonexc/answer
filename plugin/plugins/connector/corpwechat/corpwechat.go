@@ -113,7 +113,7 @@ func (g *Connector) ConnectorReceiver(ctx *plugin.GinContext, receiverURL string
 		log.Errorf("userID data parsing failed: %s", err)
 		return
 	}
-	log.Infof(fmt.Sprintf("UserID = %s, OpenID = %s", userIDData.UserID, userIDData.OpenID))
+	log.Infof("UserID = %s, OpenID = %s", userIDData.UserID, userIDData.OpenID)
 	userIDResp.Body.Close()
 	// 3.Get user info by access_token and userid
 	userInfoUrl := UrlConfig{
@@ -218,10 +218,12 @@ func (g *Connector) ConfigReceiver(config []byte) error {
 	c := &ConnectorConfig{}
 	_ = json.Unmarshal(config, c)
 	g.Config = c
+	// 获取token
 	g.TokenFromCorpWechat()
 	if !isStart {
 		go func() {
 			isStart = true
+			// 定时获取token
 			g.update()
 		}()
 	}
@@ -303,7 +305,7 @@ func (g *Connector) MailNotice(ctx context.Context, touser string,
 		Content = HEADER_WEBANK_NOTICE + displayName + "邀请你回答问题: " + questionTitle + WEBANK_LINK_NOTICE
 	}
 
-	log.Infof(fmt.Sprintf("send mail notice Content = %s", Content))
+	log.Infof("send mail notice Content = %s", Content)
 
 	// body
 	// 获取缓存中的agentID
