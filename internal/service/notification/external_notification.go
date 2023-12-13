@@ -75,6 +75,11 @@ func (ns *ExternalNotificationService) HandlerMessageWeChat(ctx context.Context,
 		if subscribers == nil {
 			log.Errorf("subscribers is nil")
 		}
+		// 没人任何人关注此标签(包含作者)，无需发送消息
+		if subscribers != nil {
+			log.Infof("No one is paying attention to this tag.")
+			return nil
+		}
 		// 去掉发布问题的作者ID
 		var UserIDS []string
 		for _, ID := range subscribers {
