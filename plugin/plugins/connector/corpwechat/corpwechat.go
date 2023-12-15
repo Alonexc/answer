@@ -90,7 +90,7 @@ func (g *Connector) ConnectorReceiver(ctx *plugin.GinContext, receiverURL string
 	client.Timeout = 15 * time.Second
 	// 1.Get token
 	accessToken := tokenCache
-	log.Infof("ConnectorReceiver accessToken=%s", accessToken)
+	log.Infof("ConnectorReceiver accessToken = %s", accessToken)
 
 	if accessToken == "" {
 		log.Info("accessToken is nil")

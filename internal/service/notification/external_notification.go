@@ -71,7 +71,7 @@ func (ns *ExternalNotificationService) HandlerMessageWeChat(ctx context.Context,
 	if msg.NewQuestionTemplateRawData != nil {
 		// 获取标签下所有的用户ID
 		subscribers := ns.allTagsFollowers(ctx, msg)
-		log.Infof("all user ids under the tag: ", subscribers)
+		log.Infof("all user ids under the tag: %s", subscribers)
 		if subscribers == nil {
 			log.Errorf("subscribers is nil")
 		}
@@ -108,7 +108,7 @@ func (ns *ExternalNotificationService) HandlerMessageWeChat(ctx context.Context,
 			name = strings.Join([]string{name, userName}, "|")
 		}
 		questionTitle := msg.NewQuestionTemplateRawData.QuestionTitle
-		log.Infof("NewQuestionTemplate: name=%s, questionTitle=%s",
+		log.Infof("NewQuestionTemplate: name = %s, questionTitle = %s",
 			name, questionTitle)
 		corpwechat.GetConnector().MailNotice(ctx, name, "", questionTitle, 0)
 		return nil
@@ -118,7 +118,7 @@ func (ns *ExternalNotificationService) HandlerMessageWeChat(ctx context.Context,
 		displayName := msg.NewCommentTemplateRawData.CommentUserDisplayName
 		questionTitle := msg.NewCommentTemplateRawData.QuestionTitle
 		//summary := msg.NewCommentTemplateRawData.CommentSummary
-		log.Infof("NewCommentTemplate: name=%s, displayName=%s, questionTitle=%s",
+		log.Infof("NewCommentTemplate: name = %s, displayName = %s, questionTitle = %s",
 			name, displayName, questionTitle)
 		corpwechat.GetConnector().MailNotice(ctx, name, displayName, questionTitle, 1)
 		return nil
@@ -128,7 +128,7 @@ func (ns *ExternalNotificationService) HandlerMessageWeChat(ctx context.Context,
 		displayName := msg.NewAnswerTemplateRawData.AnswerUserDisplayName
 		questionTitle := msg.NewAnswerTemplateRawData.QuestionTitle
 		//summary := msg.NewAnswerTemplateRawData.AnswerSummary
-		log.Infof("NewAnswerTemplate name=%s, displayName=%s, questionTitle=%s", name, displayName, questionTitle)
+		log.Infof("NewAnswerTemplate name = %s, displayName = %s, questionTitle = %s", name, displayName, questionTitle)
 		corpwechat.GetConnector().MailNotice(ctx, name, displayName, questionTitle, 2)
 		return nil
 	}
@@ -137,7 +137,7 @@ func (ns *ExternalNotificationService) HandlerMessageWeChat(ctx context.Context,
 		name := splitName(msg.ReceiverEmail)
 		displayName := msg.NewInviteAnswerTemplateRawData.InviterDisplayName
 		questionTitle := msg.NewInviteAnswerTemplateRawData.QuestionTitle
-		log.Infof("NewInviteAnswerTemplate name=%s, displayName=%s, questionTitle=%s", name, displayName, questionTitle)
+		log.Infof("NewInviteAnswerTemplate name = %s, displayName = %s, questionTitle = %s", name, displayName, questionTitle)
 		corpwechat.GetConnector().MailNotice(ctx, name, displayName, questionTitle, 3)
 		return nil
 	}

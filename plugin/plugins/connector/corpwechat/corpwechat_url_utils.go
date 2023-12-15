@@ -94,6 +94,6 @@ func (c *Config) AuthCodeURL(state string) string {
 		buf.WriteByte('?')
 	}
 	buf.WriteString(v.Encode())
-	log.Infof("oauthURL=%s", buf.String())
+	log.Infof("oauthURL = %s", buf.String())
 	return buf.String()
 }
